@@ -25,6 +25,7 @@ app.use(express_1.default.json({ limit: '1mb' }));
 app.use((0, morgan_1.default)('dev'));
 // Simple in-memory session store: sessionId -> messages
 const sessionStore = new Map();
+const lastIdentifierBySession = new Map();
 const MAX_TURNS = 10;
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', uptime: process.uptime() });
@@ -51,7 +52,11 @@ app.post('/api/chat', auth_1.authMiddleware, async (req, res, next) => {
         let response;
         switch (intent.type) {
             case 'risk_query': {
-                response = await (0, risk_1.handleRiskQuery)({ input: body.message, sessionId, context: intent.context });
+                if (intent.context && typeof intent.context['identifier'] === 'string') {
+                    lastIdentifierBySession.set(sessionId, String(intent.context['identifier']));
+                }
+                const identifier = (intent.context && intent.context['identifier']) || lastIdentifierBySession.get(sessionId);
+                response = await (0, risk_1.handleRiskQuery)({ input: identifier ? identifier : body.message, sessionId, context: intent.context });
                 break;
             }
             case 'stats_analysis': {
@@ -59,11 +64,15 @@ app.post('/api/chat', auth_1.authMiddleware, async (req, res, next) => {
                 break;
             }
             case 'investigation': {
-                response = await (0, investigation_1.handleInvestigation)({ input: body.message, sessionId, context: intent.context });
+                const identifier = lastIdentifierBySession.get(sessionId);
+                const combined = identifier ? `${identifier} ${body.message}` : body.message;
+                response = await (0, investigation_1.handleInvestigation)({ input: combined, sessionId, context: intent.context });
                 break;
             }
             case 'strategy_simulation': {
-                response = await (0, strategy_1.handleStrategySimulation)({ input: body.message, sessionId, context: intent.context });
+                const identifier = (intent.context && intent.context['prefix']) || lastIdentifierBySession.get(sessionId);
+                const combined = identifier ? `${identifier} ${body.message}` : body.message;
+                response = await (0, strategy_1.handleStrategySimulation)({ input: combined, sessionId, context: intent.context });
                 break;
             }
             default: {

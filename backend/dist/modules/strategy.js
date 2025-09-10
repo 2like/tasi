@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleStrategySimulation = handleStrategySimulation;
+const mock_1 = require("../mock");
+const extract_1 = require("../utils/extract");
 async function handleStrategySimulation(input) {
-    const match = input.input.match(/(\+?\d{3,5})/);
-    const prefix = match ? match[1] : '+86***';
-    // Mocked metrics
-    const blockRate = 0.72; // 阻断率
-    const falsePositiveRate = 0.04; // 误伤率
-    const hourly = Array.from({ length: 24 }).map((_, h) => ({ hour: h, effect: Number((0.4 + 0.6 * Math.sin(h / 3)).toFixed(2)) }));
+    const prefix = (0, extract_1.extractPrefixFromText)(input.input) || '+86***';
+    const { blockRate, falsePositiveRate, hourly } = (0, mock_1.getMockStrategy)(prefix);
     const bestHours = hourly
         .map((x) => ({ hour: x.hour, score: x.effect }))
         .sort((a, b) => b.score - a.score)

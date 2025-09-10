@@ -1,4 +1,5 @@
 import { ConversationMessage, ParsedIntent } from './types';
+import { extractIdentifierFromText } from './utils/extract';
 
 // Very lightweight keyword-based intent detection for MVP
 export function parseIntent(message: string, _history: ConversationMessage[]): ParsedIntent {
@@ -6,10 +7,9 @@ export function parseIntent(message: string, _history: ConversationMessage[]): P
 
   const contains = (arr: string[]) => arr.some((k) => text.includes(k));
 
-  if (
-    contains(['风险', '查询', '号码', 'account', 'msisdn', 'phone']) ||
-    /\+?\d{8,15}/.test(message)
-  ) {
+  if (contains(['风险', '查询', '号码', 'account', 'msisdn', 'phone']) || /\+?\d{8,15}/.test(message)) {
+    const identifier = extractIdentifierFromText(message);
+    if (identifier) return { type: 'risk_query', context: { identifier } };
     return { type: 'risk_query' };
   }
 
@@ -22,6 +22,8 @@ export function parseIntent(message: string, _history: ConversationMessage[]): P
   }
 
   if (contains(['策略', '拦截', '号段', '误伤率', '阻断率'])) {
+    const identifier = extractIdentifierFromText(message);
+    if (identifier) return { type: 'strategy_simulation', context: { prefix: identifier } };
     return { type: 'strategy_simulation' };
   }
 

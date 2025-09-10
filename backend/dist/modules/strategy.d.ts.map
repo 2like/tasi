@@ -1,1 +1,1 @@
-{"version":3,"file":"strategy.d.ts","sourceRoot":"","sources":["../../src/modules/strategy.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,YAAY,EAAE,WAAW,EAAE,MAAM,UAAU,CAAC;AAErD,wBAAsB,wBAAwB,CAAC,KAAK,EAAE,WAAW,GAAG,OAAO,CAAC,YAAY,CAAC,CAsBxF"}
+{"version":3,"file":"strategy.d.ts","sourceRoot":"","sources":["../../src/modules/strategy.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,YAAY,EAAE,WAAW,EAAE,MAAM,UAAU,CAAC;AAIrD,wBAAsB,wBAAwB,CAAC,KAAK,EAAE,WAAW,GAAG,OAAO,CAAC,YAAY,CAAC,CAiBxF"}

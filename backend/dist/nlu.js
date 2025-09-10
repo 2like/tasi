@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseIntent = parseIntent;
+const extract_1 = require("./utils/extract");
 // Very lightweight keyword-based intent detection for MVP
 function parseIntent(message, _history) {
     const text = message.toLowerCase();
     const contains = (arr) => arr.some((k) => text.includes(k));
-    if (contains(['风险', '查询', '号码', 'account', 'msisdn', 'phone']) ||
-        /\+?\d{8,15}/.test(message)) {
+    if (contains(['风险', '查询', '号码', 'account', 'msisdn', 'phone']) || /\+?\d{8,15}/.test(message)) {
+        const identifier = (0, extract_1.extractIdentifierFromText)(message);
+        if (identifier)
+            return { type: 'risk_query', context: { identifier } };
         return { type: 'risk_query' };
     }
     if (contains(['统计', '趋势', '上月', '同比', '环比', '分布'])) {
@@ -16,6 +19,9 @@ function parseIntent(message, _history) {
         return { type: 'investigation' };
     }
     if (contains(['策略', '拦截', '号段', '误伤率', '阻断率'])) {
+        const identifier = (0, extract_1.extractIdentifierFromText)(message);
+        if (identifier)
+            return { type: 'strategy_simulation', context: { prefix: identifier } };
         return { type: 'strategy_simulation' };
     }
     return { type: 'smalltalk' };

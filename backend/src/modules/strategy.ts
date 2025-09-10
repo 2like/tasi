@@ -1,13 +1,10 @@
 import { ChatResponse, ModuleInput } from '../types';
+import { getMockStrategy } from '../mock';
+import { extractPrefixFromText } from '../utils/extract';
 
 export async function handleStrategySimulation(input: ModuleInput): Promise<ChatResponse> {
-  const match = input.input.match(/(\+?\d{3,5})/);
-  const prefix = match ? match[1] : '+86***';
-
-  // Mocked metrics
-  const blockRate = 0.72; // 阻断率
-  const falsePositiveRate = 0.04; // 误伤率
-  const hourly = Array.from({ length: 24 }).map((_, h) => ({ hour: h, effect: Number((0.4 + 0.6 * Math.sin(h / 3)).toFixed(2)) }));
+  const prefix = extractPrefixFromText(input.input) || '+86***';
+  const { blockRate, falsePositiveRate, hourly } = getMockStrategy(prefix);
 
   const bestHours = hourly
     .map((x) => ({ hour: x.hour, score: x.effect }))

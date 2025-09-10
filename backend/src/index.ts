@@ -24,6 +24,7 @@ app.use(morgan('dev'));
 
 // Simple in-memory session store: sessionId -> messages
 const sessionStore: Map<string, ConversationMessage[]> = new Map();
+const lastIdentifierBySession: Map<string, string> = new Map();
 const MAX_TURNS = 10;
 
 app.get('/health', (_req: Request, res: Response) => {
@@ -56,7 +57,11 @@ app.post('/api/chat', authMiddleware, async (req: Request, res: Response, next: 
     let response: ChatResponse;
     switch (intent.type) {
       case 'risk_query': {
-        response = await handleRiskQuery({ input: body.message, sessionId, context: intent.context });
+        if (intent.context && typeof intent.context['identifier'] === 'string') {
+          lastIdentifierBySession.set(sessionId, String(intent.context['identifier']));
+        }
+        const identifier = (intent.context && (intent.context['identifier'] as string)) || lastIdentifierBySession.get(sessionId);
+        response = await handleRiskQuery({ input: identifier ? identifier : body.message, sessionId, context: intent.context });
         break;
       }
       case 'stats_analysis': {
@@ -64,11 +69,15 @@ app.post('/api/chat', authMiddleware, async (req: Request, res: Response, next: 
         break;
       }
       case 'investigation': {
-        response = await handleInvestigation({ input: body.message, sessionId, context: intent.context });
+        const identifier = lastIdentifierBySession.get(sessionId);
+        const combined = identifier ? `${identifier} ${body.message}` : body.message;
+        response = await handleInvestigation({ input: combined, sessionId, context: intent.context });
         break;
       }
       case 'strategy_simulation': {
-        response = await handleStrategySimulation({ input: body.message, sessionId, context: intent.context });
+        const identifier = (intent.context && (intent.context['prefix'] as string)) || lastIdentifierBySession.get(sessionId);
+        const combined = identifier ? `${identifier} ${body.message}` : body.message;
+        response = await handleStrategySimulation({ input: combined, sessionId, context: intent.context });
         break;
       }
       default: {
