@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电信反欺诈研判模型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        /* 左侧算子面板 */
+        .left-panel {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #e1e8ed;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        .panel-section {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header:hover {
+            background: #e9ecef;
+        }
+
+        .section-content {
+            padding: 10px 0;
+        }
+
+        .algorithm-item {
+            padding: 10px 15px;
+            cursor: grab;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .algorithm-item:hover {
+            background: #f8f9fa;
+            border-left-color: #007bff;
+        }
+
+        .algorithm-item.dragging {
+            opacity: 0.5;
+        }
+
+        .algorithm-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .model-icon { background: #28a745; }
+        .rule-icon { background: #ffc107; }
+        .profile-icon { background: #17a2b8; }
+        .filter-icon { background: #6c757d; }
+        .score-icon { background: #dc3545; }
+
+        .algorithm-info {
+            flex: 1;
+        }
+
+        .algorithm-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .algorithm-desc {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        .algorithm-type {
+            font-size: 10px;
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 1px 5px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        /* 中间画布区域 */
+        .canvas-area {
+            flex: 1;
+            background: #fafbfc;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-toolbar {
+            background: white;
+            border-bottom: 1px solid #e1e8ed;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .toolbar-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .canvas {
+            height: calc(100% - 50px);
+            position: relative;
+            background-image: 
+                radial-gradient(circle, #ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+
+        .canvas-node {
+            position: absolute;
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 150px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .canvas-node:hover {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .canvas-node.selected {
+            border-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40,167,69,0.2);
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .node-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .node-type {
+            font-size: 10px;
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .node-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .node-status {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #28a745;
+        }
+
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 右侧配置面板 */
+        .right-panel {
+            width: 320px;
+            background: white;
+            border-left: 1px solid #e1e8ed;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        .config-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .config-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .config-subtitle {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .config-content {
+            padding: 20px;
+        }
+
+        .config-group {
+            margin-bottom: 20px;
+        }
+
+        .config-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        .config-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            background: white;
+        }
+
+        .config-checkbox {
+            margin-right: 8px;
+        }
+
+        .config-range {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .metric-item {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .left-panel {
+                width: 250px;
+            }
+            .right-panel {
+                width: 280px;
+            }
+        }
+
+        .drop-zone {
+            border: 2px dashed #007bff;
+            background: rgba(0,123,255,0.05);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #007bff;
+            font-size: 14px;
+            margin: 20px;
+            transition: all 0.2s;
+        }
+
+        .drop-zone.dragover {
+            background: rgba(0,123,255,0.1);
+            border-color: #0056b3;
+        }
+
+        .empty-canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .empty-canvas-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        .collapse-icon {
+            transition: transform 0.2s;
+        }
+
+        .collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .collapsed .section-content {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>电信反欺诈研判模型</h1>
+    </div>
+
+    <div class="container">
+        <!-- 左侧算子面板 -->
+        <div class="left-panel">
+            <!-- 分类模型 -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>分类模型</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="IRSF(XGBoost)" data-category="supervised">
+                        <div class="algorithm-icon model-icon">ML</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">IRSF(XGBoost)</div>
+                            <div class="algorithm-desc">国际收入分享欺诈检测</div>
+                        </div>
+                        <div class="algorithm-type">有监督</div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="IRSF(Isolation Forest)" data-category="unsupervised">
+                        <div class="algorithm-icon model-icon">IF</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">IRSF(Isolation Forest)</div>
+                            <div class="algorithm-desc">孤立森林异常检测</div>
+                        </div>
+                        <div class="algorithm-type">无监督</div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="Wangiri(XGBoost)" data-category="supervised">
+                        <div class="algorithm-icon model-icon">WG</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">Wangiri(XGBoost)</div>
+                            <div class="algorithm-desc">一响即挂欺诈检测</div>
+                        </div>
+                        <div class="algorithm-type">有监督</div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="Caller ID Spoofing(XGBoost)" data-category="supervised">
+                        <div class="algorithm-icon model-icon">CS</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">Caller ID Spoofing(XGBoost)</div>
+                            <div class="algorithm-desc">来电显示欺骗检测</div>
+                        </div>
+                        <div class="algorithm-type">有监督</div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="Caller ID Spoofing(ResNet)" data-category="supervised">
+                        <div class="algorithm-icon model-icon">RN</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">Caller ID Spoofing(ResNet)</div>
+                            <div class="algorithm-desc">深度学习来电欺骗检测</div>
+                        </div>
+                        <div class="algorithm-type">有监督</div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="Smishing(DBSCAN)" data-category="unsupervised">
+                        <div class="algorithm-icon model-icon">DB</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">Smishing(DBSCAN)</div>
+                            <div class="algorithm-desc">短信钓鱼聚类检测</div>
+                        </div>
+                        <div class="algorithm-type">无监督</div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="model" data-name="Smishing(Qwen3-32B)" data-category="supervised">
+                        <div class="algorithm-icon model-icon">LM</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">Smishing(Qwen3-32B)</div>
+                            <div class="algorithm-desc">大模型短信钓鱼检测</div>
+                        </div>
+                        <div class="algorithm-type">有监督</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 异常检测 -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>异常检测</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="algorithm-item" draggable="true" data-type="anomaly" data-name="IRSF_通话行为异常检测">
+                        <div class="algorithm-icon rule-icon">行</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">IRSF_通话行为异常检测</div>
+                            <div class="algorithm-desc">高频、短呼、夜间突发等行为异常</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="anomaly" data-name="IRSF_号码集中度异常检测">
+                        <div class="algorithm-icon rule-icon">集</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">IRSF_号码集中度异常检测</div>
+                            <div class="algorithm-desc">集中拨打少数高费率号码</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="anomaly" data-name="IRSF_通话费用异常检测">
+                        <div class="algorithm-icon rule-icon">费</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">IRSF_通话费用异常检测</div>
+                            <div class="algorithm-desc">费率异常、费用突增检测</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 特征规则 -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>特征规则</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="algorithm-item" draggable="true" data-type="rule" data-name="黑名单规则">
+                        <div class="algorithm-icon rule-icon">黑</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">黑名单规则</div>
+                            <div class="algorithm-desc">黑名单号码及高风险号段</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="rule" data-name="通话行为规则">
+                        <div class="algorithm-icon rule-icon">通</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">通话行为规则</div>
+                            <div class="algorithm-desc">基于通话频次、时长的规则</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="rule" data-name="费用阈值规则">
+                        <div class="algorithm-icon rule-icon">费</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">费用阈值规则</div>
+                            <div class="algorithm-desc">基于费用统计的阈值规则</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户画像 -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>用户画像</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="algorithm-item" draggable="true" data-type="profile" data-name="历史风险画像">
+                        <div class="algorithm-icon profile-icon">历</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">历史风险画像</div>
+                            <div class="algorithm-desc">历史已得的风险值</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="profile" data-name="设备画像">
+                        <div class="algorithm-icon profile-icon">设</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">设备画像</div>
+                            <div class="algorithm-desc">SIM卡、IMEI变更特征</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="profile" data-name="网络画像">
+                        <div class="algorithm-icon profile-icon">网</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">网络画像</div>
+                            <div class="algorithm-desc">网络行为和信令特征</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据过滤 -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>数据过滤</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="algorithm-item" draggable="true" data-type="filter" data-name="置信度过滤">
+                        <div class="algorithm-icon filter-icon">置</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">置信度过滤</div>
+                            <div class="algorithm-desc">按置信度阈值过滤</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="filter" data-name="统计值过滤">
+                        <div class="algorithm-icon filter-icon">统</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">统计值过滤</div>
+                            <div class="algorithm-desc">按统计指标阈值过滤</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="filter" data-name="业务类型过滤">
+                        <div class="algorithm-icon filter-icon">业</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">业务类型过滤</div>
+                            <div class="algorithm-desc">按业务类型过滤数据</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 综合评分 -->
+            <div class="panel-section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>综合评分</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="algorithm-item" draggable="true" data-type="scoring" data-name="权重法评分">
+                        <div class="algorithm-icon score-icon">权</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">权重法评分</div>
+                            <div class="algorithm-desc">加权平均综合评分</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="scoring" data-name="最大值法评分">
+                        <div class="algorithm-icon score-icon">最</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">最大值法评分</div>
+                            <div class="algorithm-desc">取各模型最大置信度</div>
+                        </div>
+                    </div>
+                    <div class="algorithm-item" draggable="true" data-type="scoring" data-name="贝叶斯融合">
+                        <div class="algorithm-icon score-icon">贝</div>
+                        <div class="algorithm-info">
+                            <div class="algorithm-name">贝叶斯融合</div>
+                            <div class="algorithm-desc">贝叶斯方法融合结果</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间画布区域 -->
+        <div class="canvas-area">
+            <div class="canvas-toolbar">
+                <button class="toolbar-btn active">选择</button>
+                <button class="toolbar-btn">连接</button>
+                <button class="toolbar-btn">删除</button>
+                <button class="toolbar-btn">清空</button>
+                <div style="margin-left: auto; display: flex; gap: 10px;">
+                    <button class="toolbar-btn">保存配置</button>
+                    <button class="toolbar-btn">运行测试</button>
+                </div>
+            </div>
+            <div class="canvas" id="canvas">
+                <div class="empty-canvas">
+                    <div class="empty-canvas-icon">🎯</div>
+                    <div>拖拽左侧算子到此处开始构建模型流程</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧配置面板 -->
+        <div class="right-panel">
+            <div class="config-header">
+                <div class="config-title">算子配置</div>
+                <div class="config-subtitle">请选择画布中的算子进行配置</div>
+            </div>
+            <div class="config-content" id="configContent">
+                <div class="alert alert-info">
+                    请在画布中选择一个算子来配置其参数。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedNode = null;
+        let nodeCounter = 0;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        // 切换左侧面板折叠
+        function toggleSection(header) {
+            const section = header.parentElement;
+            section.classList.toggle('collapsed');
+        }
+
+        // 拖拽功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const algorithmItems = document.querySelectorAll('.algorithm-item');
+            const canvas = document.getElementById('canvas');
+
+            algorithmItems.forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({
+                        type: this.dataset.type,
+                        name: this.dataset.name,
+                        category: this.dataset.category || ''
+                    }));
+                    this.classList.add('dragging');
+                });
+
+                item.addEventListener('dragend', function(e) {
+                    this.classList.remove('dragging');
+                });
+            });
+
+            canvas.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+
+            canvas.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                createNode(data, x, y);
+                
+                // 隐藏空画布提示
+                const emptyCanvas = canvas.querySelector('.empty-canvas');
+                if (emptyCanvas) {
+                    emptyCanvas.style.display = 'none';
+                }
+            });
+
+            // 画布节点移动
+            canvas.addEventListener('mousedown', function(e) {
+                if (e.target.closest('.canvas-node')) {
+                    const node = e.target.closest('.canvas-node');
+                    selectedNode = node;
+                    isDragging = true;
+                    
+                    const rect = node.getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
+                    dragOffset.x = e.clientX - rect.left;
+                    dragOffset.y = e.clientY - rect.top;
+                    
+                    // 更新选中状态
+                    document.querySelectorAll('.canvas-node').forEach(n => n.classList.remove('selected'));
+                    node.classList.add('selected');
+                    
+                    // 更新配置面板
+                    updateConfigPanel(node);
+                    
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (isDragging && selectedNode) {
+                    const canvasRect = canvas.getBoundingClientRect();
+                    const x = e.clientX - canvasRect.left - dragOffset.x;
+                    const y = e.clientY - canvasRect.top - dragOffset.y;
+                    
+                    selectedNode.style.left = Math.max(0, x) + 'px';
+                    selectedNode.style.top = Math.max(0, y) + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', function(e) {
+                isDragging = false;
+            });
+
+            // 工具栏功能
+            document.querySelectorAll('.toolbar-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (this.textContent === '清空') {
+                        clearCanvas();
+                    } else if (this.textContent === '删除' && selectedNode) {
+                        selectedNode.remove();
+                        selectedNode = null;
+                        updateConfigPanel(null);
+                    } else if (this.textContent === '运行测试') {
+                        runTest();
+                    }
+                    
+                    // 更新按钮状态
+                    document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+
+        function createNode(data, x, y) {
+            nodeCounter++;
+            const node = document.createElement('div');
+            node.className = 'canvas-node';
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            node.dataset.type = data.type;
+            node.dataset.name = data.name;
+            node.dataset.id = 'node_' + nodeCounter;
+
+            const iconClass = {
+                'model': 'model-icon',
+                'anomaly': 'rule-icon',
+                'rule': 'rule-icon',
+                'profile': 'profile-icon',
+                'filter': 'filter-icon',
+                'scoring': 'score-icon'
+            }[data.type] || 'model-icon';
+
+            const typeText = {
+                'model': '分类模型',
+                'anomaly': '异常检测',
+                'rule': '特征规则',
+                'profile': '用户画像',
+                'filter': '数据过滤',
+                'scoring': '综合评分'
+            }[data.type] || '算子';
+
+            node.innerHTML = `
+                <div class="node-header">
+                    <div class="algorithm-icon ${iconClass}">${data.name.substring(0, 2)}</div>
+                    <div class="node-title">${data.name}</div>
+                    <div class="node-type">${typeText}</div>
+                </div>
+                <div class="node-desc">
+                    ${getNodeDescription(data.type, data.name)}
+                </div>
+                <div class="node-status">● 已配置</div>
+            `;
+
+            document.getElementById('canvas').appendChild(node);
+            return node;
+        }
+
+        function getNodeDescription(type, name) {
+            const descriptions = {
+                'IRSF(XGBoost)': '使用XGBoost算法检测国际收入分享欺诈',
+                'IRSF(Isolation Forest)': '使用孤立森林算法检测异常通话行为',
+                'Wangiri(XGBoost)': '检测一响即挂类型的欺诈行为',
+                'IRSF_通话行为异常检测': '基于通话频次、时长等特征的异常检测',
+                '黑名单规则': '基于黑名单号码库的规则引擎',
+                '历史风险画像': '基于用户历史行为的风险评估',
+                '置信度过滤': '根据置信度阈值过滤低可信度结果',
+                '权重法评分': '多个模型结果的加权平均融合'
+            };
+            return descriptions[name] || '算法组件';
+        }
+
+        function updateConfigPanel(node) {
+            const configContent = document.getElementById('configContent');
+            
+            if (!node) {
+                configContent.innerHTML = `
+                    <div class="alert alert-info">
+                        请在画布中选择一个算子来配置其参数。
+                    </div>
+                `;
+                return;
+            }
+
+            const type = node.dataset.type;
+            const name = node.dataset.name;
+            
+            let configHtml = '';
+            
+            switch(type) {
+                case 'model':
+                    configHtml = generateModelConfig(name);
+                    break;
+                case 'anomaly':
+                    configHtml = generateAnomalyConfig(name);
+                    break;
+                case 'rule':
+                    configHtml = generateRuleConfig(name);
+                    break;
+                case 'profile':
+                    configHtml = generateProfileConfig(name);
+                    break;
+                case 'filter':
+                    configHtml = generateFilterConfig(name);
+                    break;
+                case 'scoring':
+                    configHtml = generateScoringConfig(name);
+                    break;
+                default:
+                    configHtml = '<div class="alert alert-info">该算子暂无配置参数。</div>';
+            }
+            
+            configContent.innerHTML = configHtml;
+        }
+
+        function generateModelConfig(name) {
+            return `
+                <div class="config-group">
+                    <label class="config-label">模型名称</label>
+                    <input type="text" class="config-input" value="${name}" readonly>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">置信度阈值</label>
+                    <input type="range" class="config-range" min="0" max="1" step="0.01" value="0.8">
+                    <div class="range-labels">
+                        <span>0.0</span>
+                        <span>当前: 0.8</span>
+                        <span>1.0</span>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">特征维度</label>
+                    <select class="config-select">
+                        <option>通话行为特征</option>
+                        <option>费用特征</option>
+                        <option>目的地特征</option>
+                        <option selected>全部特征</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">
+                        <input type="checkbox" class="config-checkbox" checked>
+                        启用实时预测
+                    </label>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">模型版本</label>
+                    <select class="config-select">
+                        <option>v1.0.0</option>
+                        <option selected>v1.2.1</option>
+                        <option>v2.0.0-beta</option>
+                    </select>
+                </div>
+                
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value">93.2%</div>
+                        <div class="metric-label">准确率</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">0.15%</div>
+                        <div class="metric-label">误报率</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">89.7%</div>
+                        <div class="metric-label">召回率</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">12ms</div>
+                        <div class="metric-label">响应时间</div>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 20px;">保存配置</button>
+            `;
+        }
+
+        function generateAnomalyConfig(name) {
+            return `
+                <div class="config-group">
+                    <label class="config-label">检测算法</label>
+                    <input type="text" class="config-input" value="${name}" readonly>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">异常阈值</label>
+                    <input type="range" class="config-range" min="0" max="5" step="0.1" value="2.0">
+                    <div class="range-labels">
+                        <span>0.0 (宽松)</span>
+                        <span>当前: 2.0</span>
+                        <span>5.0 (严格)</span>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">时间窗口</label>
+                    <select class="config-select">
+                        <option>1小时</option>
+                        <option>6小时</option>
+                        <option selected>24小时</option>
+                        <option>7天</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">检测特征</label>
+                    <div style="margin-top: 8px;">
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            通话频次异常
+                        </label>
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            通话时长异常  
+                        </label>
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox">
+                            时段分布异常
+                        </label>
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            费用突增异常
+                        </label>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 20px;">保存配置</button>
+            `;
+        }
+
+        function generateRuleConfig(name) {
+            return `
+                <div class="config-group">
+                    <label class="config-label">规则名称</label>
+                    <input type="text" class="config-input" value="${name}" readonly>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">规则类型</label>
+                    <select class="config-select">
+                        <option selected>阈值规则</option>
+                        <option>区间规则</option>
+                        <option>组合规则</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">置信度区间设置</label>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 8px;">
+                        <div style="margin-bottom: 10px;">
+                            <label>低风险 (0.0-0.3)：</label>
+                            <input type="number" class="config-input" value="0.1" step="0.01" style="width: 80px; display: inline-block; margin-left: 10px;">
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label>中风险 (0.3-0.7)：</label>
+                            <input type="number" class="config-input" value="0.5" step="0.01" style="width: 80px; display: inline-block; margin-left: 10px;">
+                        </div>
+                        <div>
+                            <label>高风险 (0.7-1.0)：</label>
+                            <input type="number" class="config-input" value="0.9" step="0.01" style="width: 80px; display: inline-block; margin-left: 10px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">
+                        <input type="checkbox" class="config-checkbox" checked>
+                        启用规则缓存
+                    </label>
+                </div>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 20px;">保存配置</button>
+            `;
+        }
+
+        function generateProfileConfig(name) {
+            return `
+                <div class="config-group">
+                    <label class="config-label">画像类型</label>
+                    <input type="text" class="config-input" value="${name}" readonly>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">画像更新频率</label>
+                    <select class="config-select">
+                        <option>实时</option>
+                        <option selected>每小时</option>
+                        <option>每天</option>
+                        <option>每周</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">历史数据窗口</label>
+                    <select class="config-select">
+                        <option>7天</option>
+                        <option selected>30天</option>
+                        <option>90天</option>
+                        <option>180天</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">权重配置</label>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 8px;">
+                        <div style="margin-bottom: 8px;">
+                            <label>历史风险权重：</label>
+                            <input type="range" class="config-range" min="0" max="1" step="0.1" value="0.6" style="width: 100px; display: inline-block; margin-left: 10px;">
+                            <span style="margin-left: 10px;">60%</span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label>行为特征权重：</label>
+                            <input type="range" class="config-range" min="0" max="1" step="0.1" value="0.3" style="width: 100px; display: inline-block; margin-left: 10px;">
+                            <span style="margin-left: 10px;">30%</span>
+                        </div>
+                        <div>
+                            <label>设备特征权重：</label>
+                            <input type="range" class="config-range" min="0" max="1" step="0.1" value="0.1" style="width: 100px; display: inline-block; margin-left: 10px;">
+                            <span style="margin-left: 10px;">10%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 20px;">保存配置</button>
+            `;
+        }
+
+        function generateFilterConfig(name) {
+            return `
+                <div class="config-group">
+                    <label class="config-label">过滤器名称</label>
+                    <input type="text" class="config-input" value="${name}" readonly>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">过滤阈值</label>
+                    <input type="range" class="config-range" min="0" max="1" step="0.01" value="0.5">
+                    <div class="range-labels">
+                        <span>0.0</span>
+                        <span>当前: 0.5</span>
+                        <span>1.0</span>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">过滤条件</label>
+                    <select class="config-select">
+                        <option>大于阈值</option>
+                        <option selected>小于阈值</option>
+                        <option>等于阈值</option>
+                        <option>区间过滤</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">
+                        <input type="checkbox" class="config-checkbox" checked>
+                        记录过滤日志
+                    </label>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">预计过滤率</label>
+                    <div class="metric-item">
+                        <div class="metric-value">23.5%</div>
+                        <div class="metric-label">数据将被过滤</div>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 20px;">保存配置</button>
+            `;
+        }
+
+        function generateScoringConfig(name) {
+            return `
+                <div class="config-group">
+                    <label class="config-label">评分方法</label>
+                    <input type="text" class="config-input" value="${name}" readonly>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">融合算法</label>
+                    <select class="config-select">
+                        <option>加权平均</option>
+                        <option>最大值法</option>
+                        <option selected>贝叶斯融合</option>
+                        <option>投票法</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">风险等级划分</label>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 8px;">
+                        <div style="margin-bottom: 8px;">
+                            <label>无风险：</label>
+                            <input type="text" class="config-input" value="[0.0, 0.3)" readonly style="width: 100px; display: inline-block; margin-left: 10px;">
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label>低风险：</label>
+                            <input type="text" class="config-input" value="[0.3, 0.6)" readonly style="width: 100px; display: inline-block; margin-left: 10px;">
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label>中风险：</label>
+                            <input type="text" class="config-input" value="[0.6, 0.85)" readonly style="width: 100px; display: inline-block; margin-left: 10px;">
+                        </div>
+                        <div>
+                            <label>高风险：</label>
+                            <input type="text" class="config-input" value="[0.85, 1.0]" readonly style="width: 100px; display: inline-block; margin-left: 10px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-group">
+                    <label class="config-label">输出格式</label>
+                    <div style="margin-top: 8px;">
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            置信度分数
+                        </label>
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            风险等级
+                        </label>
+                        <label class="config-label">
+                            <input type="checkbox" class="config-checkbox">
+                            欺诈类型
+                        </label>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 20px;">保存配置</button>
+            `;
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('canvas');
+            const nodes = canvas.querySelectorAll('.canvas-node');
+            nodes.forEach(node => node.remove());
+            
+            // 显示空画布提示
+            const emptyCanvas = canvas.querySelector('.empty-canvas');
+            if (emptyCanvas) {
+                emptyCanvas.style.display = 'block';
+            }
+            
+            selectedNode = null;
+            updateConfigPanel(null);
+        }
+
+        function runTest() {
+            const nodes = document.querySelectorAll('.canvas-node');
+            if (nodes.length === 0) {
+                alert('请先在画布中添加算子');
+                return;
+            }
+            
+            // 模拟测试运行
+            nodes.forEach((node, index) => {
+                setTimeout(() => {
+                    const status = node.querySelector('.node-status');
+                    status.textContent = '● 运行中...';
+                    status.style.color = '#ffc107';
+                    
+                    setTimeout(() => {
+                        status.textContent = '● 测试完成';
+                        status.style.color = '#28a745';
+                    }, 1000 + Math.random() * 2000);
+                }, index * 500);
+            });
+            
+            alert('开始运行测试，请查看各算子状态');
+        }
+
+        // 范围滑块实时更新
+        document.addEventListener('input', function(e) {
+            if (e.target.type === 'range') {
+                const labels = e.target.parentElement.querySelector('.range-labels');
+                if (labels) {
+                    const currentSpan = labels.children[1];
+                    if (currentSpan) {
+                        currentSpan.textContent = `当前: ${e.target.value}`;
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
