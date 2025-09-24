@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电信反欺诈研判模型 - 原型</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="app-header">
+    <div class="title">IRSF 研判模型原型</div>
+    <div class="actions">
+      <button id="btn-import" class="ghost">导入</button>
+      <button id="btn-export" class="ghost">导出</button>
+      <button id="btn-preview" class="primary">评分预览</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <aside class="left-pane">
+      <div class="catalog">
+        <div class="tabs">
+          <button class="tab active" data-tab="models">Model</button>
+          <button class="tab" data-tab="features">Feature</button>
+          <button class="tab" data-tab="profile">Profile</button>
+        </div>
+
+        <div class="search-row">
+          <input id="catalog-search" placeholder="搜索模型/算子..." />
+        </div>
+
+        <div class="section-label">异常检测模型</div>
+        <ul id="list-anomaly" class="drag-list"></ul>
+
+        <div class="section-label">分类模型</div>
+        <ul id="list-classifier" class="drag-list"></ul>
+
+        <div class="section-label">特征规则</div>
+        <ul id="list-rules" class="drag-list"></ul>
+
+        <div class="section-label">算子</div>
+        <ul id="list-operators" class="drag-list"></ul>
+      </div>
+    </aside>
+
+    <section class="canvas-pane">
+      <div class="canvas-toolbar">
+        <div class="flow-name" contenteditable="true" spellcheck="false">未命名流程</div>
+        <div class="toolbar-actions">
+          <button id="btn-clear" class="ghost">清空</button>
+          <button id="btn-auto-connect" class="ghost">自动连线</button>
+        </div>
+      </div>
+      <div id="canvas" class="canvas" tabindex="0" aria-label="流程画布"></div>
+    </section>
+
+    <aside class="right-pane">
+      <div class="config-panel">
+        <div class="panel-header">参数配置</div>
+        <div id="config-body" class="panel-body empty">
+          请选择左侧的算子拖入画布，或在画布中选择节点进行配置。
+        </div>
+      </div>
+
+      <div class="score-panel">
+        <div class="panel-header">综合评分规则</div>
+        <div class="panel-body">
+          <div class="field-row">
+            <label>评分方法</label>
+            <select id="score-method">
+              <option value="max">最大值法</option>
+              <option value="mean">均值法</option>
+              <option value="weighted" selected>权重法</option>
+              <option value="bayes">贝叶斯融合</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>区间划分</label>
+            <div class="intervals" id="risk-intervals">
+              <div class="interval-row">
+                <span>无风险</span><input data-range="safe" value="[0,0.3)" />
+              </div>
+              <div class="interval-row">
+                <span>低风险</span><input data-range="low" value="[0.3,0.6)" />
+              </div>
+              <div class="interval-row">
+                <span>中风险</span><input data-range="mid" value="[0.6,0.85)" />
+              </div>
+              <div class="interval-row">
+                <span>高风险</span><input data-range="high" value="[0.85,1]" />
+              </div>
+            </div>
+          </div>
+          <div class="hint">
+            综合评分 = 过滤 + 计算；过滤按阈值直接丢弃，计算按所选方法融合各算子的置信度。
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <template id="tpl-node">
+    <div class="node" data-node-id="">
+      <div class="node-header">
+        <div class="node-title"></div>
+        <div class="node-type"></div>
+      </div>
+      <div class="node-body"></div>
+      <div class="ports">
+        <div class="port in" title="输入"></div>
+        <div class="port out" title="输出"></div>
+      </div>
+    </div>
+  </template>
+
+  <input id="hidden-file" type="file" accept="application/json" style="display:none" />
+  <script src="./app.js"></script>
+</body>
+</html>
+
